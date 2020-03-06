@@ -5,9 +5,18 @@
 #include"string.h"
 #include"netinet/in.h"
 
-#define PORT 4444
-#define BUF_SIZE 2000
+#define BUF_SIZE 512
 #define CLADDR_LEN 100
+
+
+void error(int ret){
+	if (ret < 0) {  
+     printf("Error in Sending or Receiving Data!\n");  
+     exit(1);  
+    }
+}
+
+
 
 int check_username_password(char *usr,char *pass){
 	FILE *fp=fopen("login","r");
@@ -30,10 +39,15 @@ int check_username_password(char *usr,char *pass){
 		{
 			//User Found!
 			token=strtok(NULL," ");
-			char *passwd=token;
-			if (strcmp(passwd,pass)==0)
-			fclose(fp);
-			return 1;
+			char *tok=strtok(NULL," ");
+			char *p=malloc(strlen(token));
+			strncpy(p,token,strlen(token));
+			if (strcmp(p,pass)==0){
+				//password matches!
+				printf("Correct Credentials!");
+				fclose(fp);
+				return tok[0];
+			}
         }
     }
     printf("Wrong Username or Password\n");
@@ -41,7 +55,12 @@ int check_username_password(char *usr,char *pass){
     return 0;
 }
 
-void main() {
+
+void main(int argc,char **argv) {
+ if (argc<2){
+ 	printf("usage- ./server <port_no>\n");
+ 	return;
+ }
  struct sockaddr_in addr, cl_addr;
  int sockfd, len, ret, newsockfd;
  char buffer[BUF_SIZE];
@@ -49,22 +68,16 @@ void main() {
  char clientAddr[CLADDR_LEN];
  
  sockfd = socket(AF_INET, SOCK_STREAM, 0);
- if (sockfd < 0) {
-  printf("Error creating socket!\n");
-  exit(1);
- }
+ error(sockfd);
  printf("Socket created...\n");
  
  memset(&addr, 0, sizeof(addr));
  addr.sin_family = AF_INET;
  addr.sin_addr.s_addr = INADDR_ANY;
- addr.sin_port = PORT;
+ addr.sin_port = atoi(argv[1]);
  
  ret = bind(sockfd, (struct sockaddr *) &addr, sizeof(addr));
- if (ret < 0) {
-  printf("Error binding!\n");
-  exit(1);
- }
+ error(ret);
  printf("Binding Done...\n");
 
  printf("Waiting for a Connection...\n");
@@ -73,10 +86,7 @@ void main() {
  while(1) { //infinite loop
   len = sizeof(cl_addr);
   newsockfd = accept(sockfd, (struct sockaddr *) &cl_addr, &len);
-  if (newsockfd < 0) {
-   printf("Error Accepting Connection!\n");
-   exit(1);
-  }
+  error(newsockfd);
   printf("Connection accepted\n");
 
   inet_ntop(AF_INET, &(cl_addr.sin_addr), clientAddr, CLADDR_LEN);
@@ -90,26 +100,23 @@ void main() {
    while(1) {
     memset(buffer, 0, BUF_SIZE);
     ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
-    if(ret < 0) {
-     printf("Error receiving data!\n");  
-     exit(1);
-    }
+    error(ret);
     char *buf,*usr,*pass;
-    usr=buffer;
+    usr=malloc(BUF_SIZE);
+    pass=malloc(BUF_SIZE);
+    strncpy(usr,buffer,strlen(buffer)-1);
+    memset(buffer, 0, BUF_SIZE);
     ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
-    if(ret < 0) {
-     printf("Error receiving data!\n");  
-     exit(1);
-    }
-    pass=buffer;
-    int usr_found=check_username(usr,pass);
-    if (usr_found==0) buf="Username Not found";
-    else buf="Username Found";
+    error(ret);
+    strncpy(pass,buffer,strlen(buffer)-1);
+    memset(buffer, 0, BUF_SIZE);
+    int usr_found=check_username_password(usr,pass);
+    if (usr_found==0) buf="Wrong Username or Password";
+    else if (usr_found=='C') //Customer;
+    else if (usr_found=='A') //Admin;
+    else //Police
     ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
-    if (ret < 0) {  
-     printf("Error sending data!\n");  
-     exit(1);  
-    }  
+    error(ret);  
     printf("Sent data to %s: %s\n", clientAddr, buffer);
    }
   }

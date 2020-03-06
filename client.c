@@ -7,7 +7,7 @@
 #include"netdb.h"
   
 
-#define BUF_SIZE 2000 
+#define BUF_SIZE 512 
   
 int main(int argc, char**argv) {  
  struct sockaddr_in addr, cl_addr;  
@@ -50,9 +50,15 @@ int port;
    printf("Error sending data!\n\t-%s", buffer);  
   }
   printf("Enter your Password: ");
+  if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+  ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
+  if (ret < 0) {  
+   printf("7Error sending data!\n\t-%s", buffer);  
+  }
+}
   ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
   if (ret < 0) {  
-   printf("Error receiving data!\n");    
+   printf("3Error receiving data!\n");    
   } else {
    fputs(buffer, stdout);
    printf("\n");
