@@ -5,6 +5,8 @@
 #include"string.h"
 #include"netinet/in.h"
 #include "unistd.h"
+#include <arpa/inet.h>
+#include <time.h>
 #define BUF_SIZE 512
 #define CLADDR_LEN 100
 #define MS_LEN 3
@@ -22,7 +24,7 @@ void error(int ret){
 int check_username_password(char *usr,char *pass){
 	FILE *fp=fopen("login","r");
 	if(fp == NULL){
-		printf(" problem in opening user_login file\n"); // if user login file is corrupted 
+		printf("problem in opening user_login file\n"); // if user login file is corrupted 
 		return -1;
 	}
 	char *line=NULL;
@@ -108,14 +110,14 @@ char *handle_admin(char *customer,char *transaction){
   tr_type=strtok(transaction," ");
   amt=strtok(NULL," ");
   strncpy(amt,amt,strlen(amt)-1);
-  int cur_bal = atof(get_customer_balance(customer));
-  int new_bal = cur_bal;
-  if (tr_type=="C"){
+  double cur_bal = atof(get_customer_balance(customer));
+  double new_bal = cur_bal;
+  if (strcmp(tr_type,"C")==0){
     new_bal=cur_bal+atof(amt);
   }
-  else if(tr_type=="D"){
+  else if(strcmp(tr_type,"D")==0){
     if (cur_bal-atof(amt)<0){
-      return ("Balance not enough to credit this amount\n");
+      return ("Balance not enough to debit this amount\n");
     }
     else{
       new_bal=cur_bal-atof(amt);
@@ -127,7 +129,9 @@ char *handle_admin(char *customer,char *transaction){
   ssize_t read;
 	time_t ltime; /* calendar time */
 	ltime=time(NULL); /* get current cal time */
-  sprintf(new_line,"%.*s %c %f\n",(int)strlen(asctime(localtime(&ltime)))-1,asctime(localtime(&ltime)),tr_type,new_bal);
+  printf("aaaaaaaaaaaaa\n");
+  sprintf(new_line,"%.*s %s %f\n",(int)strlen(asctime(localtime(&ltime)))-1,asctime(localtime(&ltime)),tr_type,new_bal);
+  printf("aaaaaaaaaaa%s\n",new_line );
   FILE *fp=fopen(customer,"r");
   while(read=getline(&line,&len,fp)!=-1) strcat(new_line,line);
   fclose(fp);
@@ -136,6 +140,17 @@ char *handle_admin(char *customer,char *transaction){
   fclose(fp);
   return "Transaction Performed Successfully";
 }
+
+int check_file_exists(char* usr)
+{
+  FILE *fp=fopen(usr,"r");
+  if(fp == NULL){
+    printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
+    return 0;
+  }
+  return 1;
+}
+
 void main(int argc,char **argv) {
  if (argc<2){
  	printf("usage- ./server <port_no>\n");
@@ -237,10 +252,14 @@ void main(int argc,char **argv) {
       error(ret);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
       error(ret);
-      char *customer=malloc(strlen(sizeof(char)*strlen(buffer)));
-      strcpy(customer,buffer);
-      printf("1%s2%s",buffer,customer);
-      if( access(customer, F_OK ) != -1 ) {
+      char *customer;
+      customer=malloc(BUF_SIZE);
+      strncpy(customer,buffer,strlen(buffer)-1);
+      customer="Umang";
+      //printf("1%s2%sEND\n",buffer,customer);
+      
+      //int check = check_file_exists(customer);      
+      //if( check ) {
       // file exists
         buf = "Enter Transaction to perform in the format <C/D> <Amount>\n";
         ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -251,13 +270,13 @@ void main(int argc,char **argv) {
         ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret);
       
-      } 
-      else {
+//      } //
+  //    else {
       // file doesn't exist
-      char *res = "Wrong Username\n";
-      ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-      error(ret);
-      }
+    //  char *res = "Wrong Username\n";
+      //ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+      //error(ret);
+      //}
 
       }
     else ;//Police
