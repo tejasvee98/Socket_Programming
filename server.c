@@ -4,7 +4,7 @@
 #include"sys/socket.h"
 #include"string.h"
 #include"netinet/in.h"
-
+#include "unistd.h"
 #define BUF_SIZE 512
 #define CLADDR_LEN 100
 #define MS_LEN 3
@@ -103,8 +103,39 @@ char* get_mini_stat(char* usr)
   }
   return mini_stat;
 }
-
-
+char *handle_admin(char *customer,char *transaction){
+  char *tr_type,*amt,*lc;
+  tr_type=strtok(transaction," ");
+  amt=strtok(NULL," ");
+  strncpy(amt,amt,strlen(amt)-1);
+  int cur_bal = atof(get_customer_balance(customer));
+  int new_bal = cur_bal;
+  if (tr_type=="C"){
+    new_bal=cur_bal+atof(amt);
+  }
+  else if(tr_type=="D"){
+    if (cur_bal-atof(amt)<0){
+      return ("Balance not enough to credit this amount\n");
+    }
+    else{
+      new_bal=cur_bal-atof(amt);
+    }
+  }
+  char *line=NULL;
+  char *new_line=(char *)malloc(10000*sizeof(char));
+  size_t len = 0;
+  ssize_t read;
+	time_t ltime; /* calendar time */
+	ltime=time(NULL); /* get current cal time */
+  sprintf(new_line,"%.*s %c %f\n",(int)strlen(asctime(localtime(&ltime)))-1,asctime(localtime(&ltime)),tr_type,new_bal);
+  FILE *fp=fopen(customer,"r");
+  while(read=getline(&line,&len,fp)!=-1) strcat(new_line,line);
+  fclose(fp);
+  fp=fopen(customer,"w");
+  fwrite(new_line,sizeof(char),strlen(new_line),fp);
+  fclose(fp);
+  return "Transaction Performed Successfully";
+}
 void main(int argc,char **argv) {
  if (argc<2){
  	printf("usage- ./server <port_no>\n");
@@ -163,7 +194,7 @@ void main(int argc,char **argv) {
     if (usr_found==0) buf="Wrong Username or Password";
     else if (usr_found=='C') 
     {
-      buf = "Welcome User!\nType 'Balance' to know balance.\nType 'Mini_stat' to get mini statement.\n";
+      buf = "C Welcome User!\nType 'Balance' to know balance.\nType 'Mini_stat' to get mini statement.\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
       error(ret);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
@@ -198,7 +229,37 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, response, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
       error(ret);
     }
-    else if (usr_found=='A') ;//Admin;
+    //Admin
+    else if (usr_found=='A') {
+      memset(buffer,0,BUF_SIZE);
+      buf = "A Welcome Admin!\nType 'Username' to perform transactions\n";
+      ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+      error(ret);
+      ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+      error(ret);
+      char *customer=malloc(strlen(sizeof(char)*strlen(buffer)));
+      strcpy(customer,buffer);
+      printf("1%s2%s",buffer,customer);
+      if( access(customer, F_OK ) != -1 ) {
+      // file exists
+        buf = "Enter Transaction to perform in the format <C/D> <Amount>\n";
+        ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+        error(ret);
+        ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+        error(ret);
+        char* res=handle_admin(customer,buffer);
+        ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+        error(ret);
+      
+      } 
+      else {
+      // file doesn't exist
+      char *res = "Wrong Username\n";
+      ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+      error(ret);
+      }
+
+      }
     else ;//Police
     ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
     error(ret);  
