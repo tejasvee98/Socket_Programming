@@ -63,7 +63,7 @@ char* get_customer_balance(char* usr)
   FILE *fp=fopen(usr,"r");
   if(fp == NULL){
     printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
-    return -1;
+    return NULL;
   }
   char *line=NULL;
   size_t line_size=0;
@@ -74,7 +74,7 @@ char* get_customer_balance(char* usr)
     if(token == NULL){
         fclose(fp); 
         printf(" Error in Transaction file\n");
-         return 0;
+         return "0.00";
     }
     for (int i = 0; i < 5; ++i)
     {
@@ -83,6 +83,10 @@ char* get_customer_balance(char* usr)
     token=strtok(NULL," ");
     return token;
   }
+  else {
+    //In Case File is empty
+    return "0.00";
+  }
 }
 
 char* get_mini_stat(char* usr)
@@ -90,7 +94,7 @@ char* get_mini_stat(char* usr)
   FILE *fp=fopen(usr,"r");
   if(fp == NULL){
     printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
-    return -1;
+    return NULL;
   }
   char *mini_stat = (char*) malloc(10000*sizeof(char));
   mini_stat[0] = '\0';
@@ -106,7 +110,8 @@ char* get_mini_stat(char* usr)
   return mini_stat;
 }
 char *handle_admin(char *customer,char *transaction){
-  char *tr_type,*amt,*lc;
+  char *tr_type,*amt;
+  char *ans=malloc(sizeof(char)*10000);
   tr_type=strtok(transaction," ");
   amt=strtok(NULL," ");
   strncpy(amt,amt,strlen(amt)-1);
@@ -117,7 +122,8 @@ char *handle_admin(char *customer,char *transaction){
   }
   else if(strcmp(tr_type,"D")==0){
     if (cur_bal-atof(amt)<0){
-      return ("Balance not enough to debit this amount\n");
+      sprintf(ans,"Insufficient Balance in account to debit this amount.Current Balance = Rs.%.2f\n",cur_bal);
+      return ans;
     }
     else{
       new_bal=cur_bal-atof(amt);
@@ -129,28 +135,52 @@ char *handle_admin(char *customer,char *transaction){
   ssize_t read;
 	time_t ltime; /* calendar time */
 	ltime=time(NULL); /* get current cal time */
-  printf("aaaaaaaaaaaaa\n");
   sprintf(new_line,"%.*s %s %f\n",(int)strlen(asctime(localtime(&ltime)))-1,asctime(localtime(&ltime)),tr_type,new_bal);
-  printf("aaaaaaaaaaa%s\n",new_line );
   FILE *fp=fopen(customer,"r");
   while(read=getline(&line,&len,fp)!=-1) strcat(new_line,line);
   fclose(fp);
   fp=fopen(customer,"w");
   fwrite(new_line,sizeof(char),strlen(new_line),fp);
   fclose(fp);
-  return "Transaction Performed Successfully";
+  char * new_bal_ans=get_customer_balance(customer);
+  
+  sprintf(ans,"Transaction Performed Successfully.Current Balance = Rs.%.2f\n",atof(new_bal_ans));
+  return ans;
 }
-
-int check_file_exists(char* usr)
-{
-  FILE *fp=fopen(usr,"r");
-  if(fp == NULL){
-    printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
-    return 0;
+int check_user_login(char *customer){
+  FILE *fp=fopen("login","r");
+  char *line=NULL;
+  size_t len = 0;
+  ssize_t read;
+  while(read=getline(&line,&len,fp)!=-1){
+    char *token,*usr,*type;
+    usr=strtok(line," ");
+    token=strtok(NULL," ");
+    type=strtok(NULL,"\n");
+    if (strcmp(type,"C")==0 && strcmp(usr,customer)==0){
+      return 0;
+    }
   }
-  return 1;
+  return -1;
 }
-
+int get_customer_names(char **ans){
+  FILE *fp=fopen("login","r");
+  int i=0;
+  char *line=NULL;
+  size_t len = 0;
+  ssize_t read;
+  while(read=getline(&line,&len,fp)!=-1){
+    char *token,*usr,*type;
+    usr=strtok(line," ");
+    token=strtok(NULL," ");
+    type=strtok(NULL,"\n");
+    if (strcmp(type,"C\n")==0){
+      strcpy(ans[i],usr);
+      i++;
+    }
+  }
+  return i;
+}
 void main(int argc,char **argv) {
  if (argc<2){
  	printf("usage- ./server <port_no>\n");
@@ -207,6 +237,7 @@ void main(int argc,char **argv) {
     memset(buffer, 0, BUF_SIZE);
     int usr_found=check_username_password(usr,pass);
     if (usr_found==0) buf="Wrong Username or Password";
+    //Customer
     else if (usr_found=='C') 
     {
       buf = "C Welcome User!\nType 'Balance' to know balance.\nType 'Mini_stat' to get mini statement.\n";
@@ -247,7 +278,7 @@ void main(int argc,char **argv) {
     //Admin
     else if (usr_found=='A') {
       memset(buffer,0,BUF_SIZE);
-      buf = "A Welcome Admin!\nType 'Username' to perform transactions\n";
+      buf = "A Welcome Admin!\nEnter 'Username' of  the Customer to perform transactions\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
       error(ret);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
@@ -255,13 +286,10 @@ void main(int argc,char **argv) {
       char *customer;
       customer=malloc(BUF_SIZE);
       strncpy(customer,buffer,strlen(buffer)-1);
-      customer="Umang";
-      //printf("1%s2%sEND\n",buffer,customer);
-      
-      //int check = check_file_exists(customer);      
-      //if( check ) {
+      customer[strlen(buffer)-1]='\0';     
+      if(access( customer, F_OK ) != -1  && check_user_login(customer)==0) {
       // file exists
-        buf = "Enter Transaction to perform in the format <C/D> <Amount>\n";
+        buf = "Enter the Transaction to perform in the following format: <C/D> <Amount>\n";
         ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret);
         ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
@@ -270,16 +298,55 @@ void main(int argc,char **argv) {
         ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret);
       
-//      } //
-  //    else {
-      // file doesn't exist
-    //  char *res = "Wrong Username\n";
-      //ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-      //error(ret);
-      //}
-
+      } 
+      else {
+       //file doesn't exist
+      char *res = "Wrong Username. Make Sure the Customer entry is there in login File and the corresponding transaction history file exists\n";
+      ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+      error(ret);
       }
-    else ;//Police
+
+    }
+    //Police
+    else if(usr_found=='P'){
+      memset(buffer,0,BUF_SIZE);
+      buf = "P Welcome Police!\nType 'Balance' to view balance of all users.\nType 'Mini_stat <username>' to get mini statement of a specific customer.\n";
+      ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+      error(ret);
+      ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+      error(ret);
+      char *token=malloc(BUF_SIZE),*user1=malloc(BUF_SIZE);
+      strncpy(token,buffer,strlen(buffer));
+      token=strtok_r(token," ",&user1);
+      token[10]='\0';
+      printf("%s",token);
+      if (strcmp(token,"Balance")==0){
+        char *user=malloc(sizeof(char)*10000);
+        int n=get_customer_names(&user);
+        for (int i=0;i<n;i++){
+          char *str;
+          sprintf(str,"%s's Balance = Rs.%.2f\n",(char *)user[i],atof(get_customer_balance((char *)user[i])));
+          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+          error(ret);
+        }
+      }
+      else if(strcmp(token,"Mini_stat")==0){
+        user1=strtok(NULL,"\n");
+        printf("%s",user1);
+        if (check_user_login(user1)==0) {
+          char *str;
+          sprintf(str,"%s",get_mini_stat(user1));
+          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+          error(ret);
+        }
+        else {
+          char *str="Enter Valid Username";
+          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+          error(ret);
+        }
+      }
+
+    }
     ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
     error(ret);  
     printf("Sent data to %s: %s\n", clientAddr, buffer);

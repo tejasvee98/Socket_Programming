@@ -59,9 +59,10 @@ int port;
   } 
 	else {
     char *type,*token;
-    type=strtok(buffer," ");
-    fputs(buffer, stdout);
+    type=strtok_r(buffer," ",&token);
+    fputs(token, stdout);
     printf("\n");
+	//Customer
     if (strcmp(type,"C")==0){
       printf("Enter your Query: ");
       if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
@@ -70,19 +71,19 @@ int port;
         printf("Error sending data!\n\t-%s", buffer);  
       }
 		}
-  		ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
-  		if (ret < 0) {  
-   			printf("3Error receiving data!\n");    
-  		} 
-			else {
-   			fputs(buffer, stdout);
-   			printf("\n");
-  		}  
- 		}
-		 else if (strcmp(type,"A")==0){
-			
-			printf("Enter Customer Name: ");
-      if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+			if (ret < 0) {  
+				printf("3Error receiving data!\n");    
+			} 
+			else{
+				fputs(buffer, stdout);
+				printf("\n");
+			}  
+		}
+		//Admin
+		else if (strcmp(type,"A")==0){
+			printf("Username: ");
+      if (fgets(buffer, BUF_SIZE, stdin) != NULL){
       	ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
 			}
       if (ret < 0) {  
@@ -112,6 +113,24 @@ int port;
 				printf("\n");
 			}
   }
+	//Police
+	else if(strcmp(type,"P")==0){
+		if (fgets(buffer, BUF_SIZE, stdin) != NULL){
+      	ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
+			}
+      if (ret < 0) {  
+        printf("Error sending data!\n\t-%s", buffer);  
+      }
+			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+  		if (ret < 0) {  
+   			printf("3Error receiving data!\n");    
+  		}
+			else{
+				fputs(buffer,stdout);
+				printf("\n");
+			}
+
+	}
 }
   
   
