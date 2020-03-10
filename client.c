@@ -116,19 +116,19 @@ int port;
 	//Police
 	else if(strcmp(type,"P")==0){
 		if (fgets(buffer, BUF_SIZE, stdin) != NULL){
-      	ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
-			}
+        ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
+      }
       if (ret < 0) {  
         printf("Error sending data!\n\t-%s", buffer);  
       }
-			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
-  		if (ret < 0) {  
-   			printf("3Error receiving data!\n");    
-  		}
-			else{
-				fputs(buffer,stdout);
-				printf("\n");
-			}
+      ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+      if (ret < 0) {  
+        printf("3Error receiving data!\n");    
+      }
+      else{
+        fputs(buffer,stdout);
+        printf("\n");
+      }
 
 	}
 }

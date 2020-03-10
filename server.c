@@ -63,6 +63,7 @@ char* get_customer_balance(char* usr)
   FILE *fp=fopen(usr,"r");
   if(fp == NULL){
     printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
+    fclose(fp);
     return NULL;
   }
   char *line=NULL;
@@ -81,10 +82,12 @@ char* get_customer_balance(char* usr)
       token=strtok(NULL," ");
     }
     token=strtok(NULL," ");
+    fclose(fp);
     return token;
   }
   else {
     //In Case File is empty
+    fclose(fp);
     return "0.00";
   }
 }
@@ -94,6 +97,7 @@ char* get_mini_stat(char* usr)
   FILE *fp=fopen(usr,"r");
   if(fp == NULL){
     printf(" problem in opening Transaction file\n"); // if user login file is corrupted 
+    fclose(fp);
     return NULL;
   }
   char *mini_stat = (char*) malloc(10000*sizeof(char));
@@ -107,6 +111,7 @@ char* get_mini_stat(char* usr)
     strcat(mini_stat,line);
     lines++;
   }
+  fclose(fp);
   return mini_stat;
 }
 char *handle_admin(char *customer,char *transaction){
@@ -163,24 +168,57 @@ int check_user_login(char *customer){
   }
   return -1;
 }
-int get_customer_names(char **ans){
-  FILE *fp=fopen("login","r");
-  int i=0;
-  char *line=NULL;
-  size_t len = 0;
-  ssize_t read;
-  while(read=getline(&line,&len,fp)!=-1){
-    char *token,*usr,*type;
-    usr=strtok(line," ");
-    token=strtok(NULL," ");
-    type=strtok(NULL,"\n");
-    if (strcmp(type,"C\n")==0){
-      strcpy(ans[i],usr);
-      i++;
-    }
+// int get_customer_names(char **ans){
+//   FILE *fp=fopen("login","r");
+//   int i=0;
+//   char *line=NULL;
+//   size_t len = 0;
+//   ssize_t read;
+//   while(read=getline(&line,&len,fp)!=-1){
+//     char *token,*usr,*type;
+//     usr=strtok(line," ");
+//     token=strtok(NULL," ");
+//     type=strtok(NULL,"\n");
+//     if (strcmp(type,"C\n")==0){
+//       strcpy(ans[i],usr);
+//       i++;
+//     }
+//   }
+//   return i;
+// }
+char* get_all_balances()
+{
+  FILE* fp = fopen("login","r");
+  if(fp == NULL){
+    printf(" problem in opening file\n"); // if user login file is corrupted 
+    return "0.00";
   }
-  return i;
+  char *line=NULL;
+  size_t line_size=0;
+  ssize_t read;
+  char *response = (char*) malloc(400*sizeof(char));
+  memset(response,0,400);
+  while((read = getline(&line, &line_size, fp)) != -1)
+  {
+    char* token = strtok(line," ");
+    char* username = malloc(15);
+    strcpy(username,token);
+    username[strlen(token)]='\0';
+    token = strtok(NULL," ");
+    token = strtok(NULL," ");
+    if(strncmp(token,"C",1)==0)
+    {
+      //printf("%s\n", username);
+      strcat(response,username);
+      strcat(response," : ");
+      strcat(response,get_customer_balance(username));
+    }
+    free(username);
+  }
+  return response;
 }
+
+
 void main(int argc,char **argv) {
  if (argc<2){
  	printf("usage- ./server <port_no>\n");
@@ -310,42 +348,38 @@ void main(int argc,char **argv) {
     //Police
     else if(usr_found=='P'){
       memset(buffer,0,BUF_SIZE);
-      buf = "P Welcome Police!\nType 'Balance' to view balance of all users.\nType 'Mini_stat <username>' to get mini statement of a specific customer.\n";
+      buf = "P Welcome Police!\nType 'Balance' to show balance of all customers.\nType 'Mini_stat <username>' to get the mini statements.\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
       error(ret);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
       error(ret);
-      char *token=malloc(BUF_SIZE),*user1=malloc(BUF_SIZE);
-      strncpy(token,buffer,strlen(buffer));
-      token=strtok_r(token," ",&user1);
-      token[10]='\0';
-      printf("%s",token);
-      if (strcmp(token,"Balance")==0){
-        char *user=malloc(sizeof(char)*10000);
-        int n=get_customer_names(&user);
-        for (int i=0;i<n;i++){
-          char *str;
-          sprintf(str,"%s's Balance = Rs.%.2f\n",(char *)user[i],atof(get_customer_balance((char *)user[i])));
-          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-          error(ret);
-        }
+      char *response = (char*) malloc(5000*sizeof(char));
+      
+      if(strncmp(buffer,"Balance",7)==0 && strlen(buffer)==8)
+      {
+        strcpy(response,"Balance of each customer is:\n");
+        strcat(response,get_all_balances());
+        //printf("%s\n", response);
       }
-      else if(strcmp(token,"Mini_stat")==0){
-        user1=strtok(NULL,"\n");
-        printf("%s",user1);
-        if (check_user_login(user1)==0) {
-          char *str;
-          sprintf(str,"%s",get_mini_stat(user1));
-          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-          error(ret);
-        }
-        else {
-          char *str="Enter Valid Username";
-          ret = sendto(newsockfd, str, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-          error(ret);
-        }
+      else if(strncmp(buffer,"Mini_stat ",10)==0)
+      {
+        strcpy(response,"Mini Statement:\n");
+        char* token=strtok(buffer," ");
+        token = strtok(NULL," ");
+        char* username = malloc(15);
+        strcpy(username,token);
+        username[strlen(token)-1]='\0';
+        //printf("%s\n",username);
+        strcat(response,get_mini_stat(username));
+        free(username);
+        //printf("received: %s\n", response);
       }
-
+      else
+      {
+        strcat(response,"Query not valid.\n");
+      }
+      ret = sendto(newsockfd, response, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
+      error(ret);
     }
     ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
     error(ret);  
