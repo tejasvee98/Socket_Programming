@@ -52,7 +52,7 @@ int port;
   ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
   error(ret,"sending data");
 }
-
+while(1){
   ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
   if (ret < 0) {  
    printf("3Error receiving data!\n");    
@@ -64,6 +64,7 @@ int port;
     printf("\n");
 	//Customer
     if (strcmp(type,"C")==0){
+      
       printf("Enter your Query: ");
       if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
       ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
@@ -73,13 +74,14 @@ int port;
 		}
 			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
 			if (ret < 0) {  
-				printf("3Error receiving data!\n");    
+				printf("Error receiving data!\n");    
 			} 
 			else{
 				fputs(buffer, stdout);
 				printf("\n");
 			}  
-		}
+		
+    }
 		//Admin
 		else if (strcmp(type,"A")==0){
 			printf("Username: ");
@@ -131,6 +133,7 @@ int port;
       }
 
 	}
+}
 }
   
   

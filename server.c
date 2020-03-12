@@ -14,7 +14,7 @@
 
 void error(int ret){
 	if (ret < 0) {  
-     printf("Error in Sending or Receiving Data!\n");  
+     printf("Error in Sending or Receiving Data!\n"); 
      exit(1);  
     }
 }
@@ -168,24 +168,6 @@ int check_user_login(char *customer){
   }
   return -1;
 }
-// int get_customer_names(char **ans){
-//   FILE *fp=fopen("login","r");
-//   int i=0;
-//   char *line=NULL;
-//   size_t len = 0;
-//   ssize_t read;
-//   while(read=getline(&line,&len,fp)!=-1){
-//     char *token,*usr,*type;
-//     usr=strtok(line," ");
-//     token=strtok(NULL," ");
-//     type=strtok(NULL,"\n");
-//     if (strcmp(type,"C\n")==0){
-//       strcpy(ans[i],usr);
-//       i++;
-//     }
-//   }
-//   return i;
-// }
 char* get_all_balances()
 {
   FILE* fp = fopen("login","r");
@@ -276,7 +258,8 @@ void main(int argc,char **argv) {
     int usr_found=check_username_password(usr,pass);
     if (usr_found==0) buf="Wrong Username or Password";
     //Customer
-    else if (usr_found=='C') 
+    else if (usr_found=='C') {
+    while(1)
     {
       buf = "C Welcome User!\nType 'Balance' to know balance.\nType 'Mini_stat' to get mini statement.\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -313,40 +296,43 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, response, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
       error(ret);
     }
+  }
     //Admin
     else if (usr_found=='A') {
-      memset(buffer,0,BUF_SIZE);
-      buf = "A Welcome Admin!\nEnter 'Username' of  the Customer to perform transactions\n";
-      ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-      error(ret);
-      ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
-      error(ret);
-      char *customer;
-      customer=malloc(BUF_SIZE);
-      strncpy(customer,buffer,strlen(buffer)-1);
-      customer[strlen(buffer)-1]='\0';     
-      if(access( customer, F_OK ) != -1  && check_user_login(customer)==0) {
-      // file exists
-        buf = "Enter the Transaction to perform in the following format: <C/D> <Amount>\n";
+      while(1){
+        memset(buffer,0,BUF_SIZE);
+        buf = "A Welcome Admin!\nEnter 'Username' of  the Customer to perform transactions\n";
         ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret);
         ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
         error(ret);
-        char* res=handle_admin(customer,buffer);
+        char *customer;
+        customer=malloc(BUF_SIZE);
+        strncpy(customer,buffer,strlen(buffer)-1);
+        customer[strlen(buffer)-1]='\0';     
+        if(access( customer, F_OK ) != -1  && check_user_login(customer)==0) {
+        // file exists
+          buf = "Enter the Transaction to perform in the following format: <C/D> <Amount>\n";
+          ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+          error(ret);
+          ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+          error(ret);
+          char* res=handle_admin(customer,buffer);
+          ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+          error(ret);
+        
+        } 
+        else {
+        //file doesn't exist
+        char *res = "Wrong Username. Make Sure the Customer entry is there in login File and the corresponding transaction history file exists\n";
         ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret);
-      
-      } 
-      else {
-       //file doesn't exist
-      char *res = "Wrong Username. Make Sure the Customer entry is there in login File and the corresponding transaction history file exists\n";
-      ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
-      error(ret);
+        }
       }
-
     }
     //Police
     else if(usr_found=='P'){
+      while(1){
       memset(buffer,0,BUF_SIZE);
       buf = "P Welcome Police!\nType 'Balance' to show balance of all customers.\nType 'Mini_stat <username>' to get the mini statements.\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -381,6 +367,7 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, response, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
       error(ret);
     }
+   }
     ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
     error(ret);  
     printf("Sent data to %s: %s\n", clientAddr, buffer);
