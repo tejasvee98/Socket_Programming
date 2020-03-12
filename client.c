@@ -5,15 +5,45 @@
 #include"string.h"  
 #include"netinet/in.h"  
 #include"netdb.h"
-  
+#include <unistd.h>
 
 #define BUF_SIZE 512 
-void error(int ret,char *msg){
+void error(int ret,char *msg, int sockfd){
 	if (ret < 0) {  
-     printf("Error in %s!\n",msg);  
+     printf("Error in %s!\n",msg); 
+     shutdown(sockfd,SHUT_RD);
+     shutdown(sockfd, SHUT_WR);
+     printf("Closed gracefully\n");
+     close(sockfd); 
      exit(1);  
     }
 }
+
+void connection_error(int ret, char *msg)
+{
+  if(ret<0)
+  {
+    printf("Error in %s!\n",msg);
+    exit(1);
+  }
+}
+void close_socket_exit(int sockfd, struct sockaddr_in addr)
+{
+  int ret;
+  ret = sendto(sockfd, "Exit", BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
+  shutdown(sockfd, SHUT_WR);
+  char buffer[BUF_SIZE];
+  // while(1)
+  // {
+    ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);
+  //   if(strcmp(buffer,NULL)==0)
+  //     break;
+  // }
+  shutdown(sockfd,SHUT_RD);
+  close(sockfd);
+  printf("Closed socket gracefully\n");
+}
+
 int main(int argc, char**argv) {  
  struct sockaddr_in addr, cl_addr;  
  int sockfd, ret;  
@@ -29,7 +59,7 @@ int port;
  serverAddr = argv[1]; 
  port =atoi(argv[2]);
  sockfd = socket(AF_INET, SOCK_STREAM, 0);  
- error(sockfd,"creating socket");  
+ connection_error(sockfd,"creating socket");  
  printf("Socket created...\n");   
 
  memset(&addr, 0, sizeof(addr));  
@@ -38,22 +68,37 @@ int port;
  addr.sin_port = port;     
 
  ret = connect(sockfd, (struct sockaddr *) &addr, sizeof(addr));  
- error(ret,"connecting to server");  
+ connection_error(ret,"connecting to server");  
  printf("Connected to the server...\n");  
 
  memset(buffer, 0, BUF_SIZE);
  printf("Enter your Username: ");
  if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+   if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          return 0;
+        }
   ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr)); 
  } 
-  error(ret,"Sending Data");
+  error(ret,"Sending Data",sockfd);
   printf("Enter your Password: ");
   if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+    if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          return 0;
+        }
   ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
-  error(ret,"sending data");
+  error(ret,"sending data",sockfd);
 }
 while(1){
   ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+  if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }
   if (ret < 0) {  
    printf("3Error receiving data!\n");    
   } 
@@ -67,12 +112,22 @@ while(1){
       
       printf("Enter your Query: ");
       if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+        if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }
       ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
       if (ret < 0) {  
         printf("Error sending data!\n\t-%s", buffer);  
       }
 		}
 			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+      if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }
 			if (ret < 0) {  
 				printf("Error receiving data!\n");    
 			} 
@@ -86,12 +141,23 @@ while(1){
 		else if (strcmp(type,"A")==0){
 			printf("Username: ");
       if (fgets(buffer, BUF_SIZE, stdin) != NULL){
+        if(strncmp(buffer,"Exit",4)==0)
+        {
+          printf("Hi\n");
+          close_socket_exit(sockfd,addr);
+          break;
+        }
       	ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
 			}
       if (ret < 0) {  
         printf("Error sending data!\n\t-%s", buffer);  
       }
-			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);
+      if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }  
   		if (ret < 0) {  
    			printf("3Error receiving data!\n");    
   		}
@@ -101,12 +167,22 @@ while(1){
 			}
 		 
 		 if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
+       if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }
       	ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));
 		 }  
       if (ret < 0) {  
         printf("Error sending data!\n\t-%s", buffer);  
       }
-			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+			ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL); 
+      if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        } 
   		if (ret < 0) {  
    			printf("3Error receiving data!\n");    
   		}
@@ -118,12 +194,22 @@ while(1){
 	//Police
 	else if(strcmp(type,"P")==0){
 		if (fgets(buffer, BUF_SIZE, stdin) != NULL){
+      if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        }
         ret = sendto(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &addr, sizeof(addr));  
       }
       if (ret < 0) {  
         printf("Error sending data!\n\t-%s", buffer);  
       }
-      ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
+      ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL); 
+      if(strncmp(buffer,"Exit",4)==0)
+        {
+          close_socket_exit(sockfd,addr);
+          break;
+        } 
       if (ret < 0) {  
         printf("3Error receiving data!\n");    
       }
@@ -135,8 +221,6 @@ while(1){
 	}
 }
 }
-  
-  
  
  return 0;    
 }  

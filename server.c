@@ -15,7 +15,7 @@ void socket_error(int ret)
 {
   if(ret < 0)
   {
-    printf("Error in creating socket!");
+    printf("Error in creating socket!\n");
     exit(1);
   }
 }
@@ -30,12 +30,12 @@ void error(int ret, int newsockfd, struct sockaddr_in cl_addr, int len)
      char buffer[BUF_SIZE];
      shutdown(newsockfd, SHUT_WR);
      int ret2;
-     while(1)
-     {
-       ret2 = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
-      if(buffer==NULL) break;
+    //  while(1)
+    //  {
+      ret2 = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+      // if(buffer==NULL) break;
       //free(buffer);
-     }
+    //  }y
      shutdown(newsockfd, SHUT_RD);
      close(newsockfd);
      printf("%d closed due to internal error\n",newsockfd);
@@ -49,7 +49,7 @@ void close_socket_exit(int newsockfd, struct sockaddr_in cl_addr, int len)
   ret = sendto(newsockfd, "Shutting down.\n", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
   shutdown(newsockfd,SHUT_WR);
   close(newsockfd);
-  printf("Closed gracefully");
+  printf("Closed gracefully\n");
 }
 
 int check_username_password(char *usr,char *pass){
@@ -285,17 +285,36 @@ void main(int argc,char **argv) {
     memset(buffer, 0, BUF_SIZE);
     ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
     error(ret,newsockfd,cl_addr,len);
+    if(strncmp(buffer,"Exit",4)==0)
+      {
+        close_socket_exit(newsockfd, cl_addr, len);
+        exit(1);
+      }
     char *buf,*usr,*pass;
     usr=malloc(BUF_SIZE);
     pass=malloc(BUF_SIZE);
     strncpy(usr,buffer,strlen(buffer)-1);
     memset(buffer, 0, BUF_SIZE);
     ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+    if(strncmp(buffer,"Exit",4)==0)
+      {
+        close_socket_exit(newsockfd, cl_addr, len);
+        exit(1);
+      }
     error(ret,newsockfd,cl_addr,len);
     strncpy(pass,buffer,strlen(buffer)-1);
     memset(buffer, 0, BUF_SIZE);
     int usr_found=check_username_password(usr,pass);
-    if (usr_found==0) buf="Wrong Username or Password";
+    if (usr_found==0) 
+    {
+      memset(buf, 0, BUF_SIZE);
+      buf="<dummy> Username or Password incorrect";
+      ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
+     error(ret,newsockfd,cl_addr,len);
+     ret = sendto(newsockfd, "Exit", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
+     close_socket_exit(newsockfd, cl_addr, len);
+    exit(1);
+    }
     //Customer
     else if (usr_found=='C') {
     while(1)
@@ -304,6 +323,11 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
       error(ret,newsockfd,cl_addr,len);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+      if(strncmp(buffer,"Exit",4)==0)
+      {
+        close_socket_exit(newsockfd, cl_addr, len);
+        exit(1);
+      }
       error(ret,newsockfd,cl_addr,len);
       //printf("Hi        %s1", buffer);
       //customer_queries(usr);
@@ -344,11 +368,16 @@ void main(int argc,char **argv) {
         ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret,newsockfd,cl_addr,len);
         ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+        if(strncmp(buffer,"Exit",4)==0)
+      {
+        close_socket_exit(newsockfd, cl_addr, len);
+        exit(1);
+      }
         error(ret,newsockfd,cl_addr,len);
         if(strncmp(buffer,"Exit",4)==0)
           {
             close_socket_exit(newsockfd, cl_addr, len);
-            break;
+            exit(1);
           }
         char *customer;
         customer=malloc(BUF_SIZE);
@@ -360,6 +389,11 @@ void main(int argc,char **argv) {
           ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
           error(ret,newsockfd,cl_addr,len);
           ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+          if(strncmp(buffer,"Exit",4)==0)
+          {
+            close_socket_exit(newsockfd, cl_addr, len);
+            exit(1);
+          }
           error(ret,newsockfd,cl_addr,len);
           char* res=handle_admin(customer,buffer);
           ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
@@ -382,6 +416,11 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
       error(ret,newsockfd,cl_addr,len);
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
+      if(strncmp(buffer,"Exit",4)==0)
+      {
+        close_socket_exit(newsockfd, cl_addr, len);
+        exit(1);
+      }
       error(ret,newsockfd,cl_addr,len);
       char *response = (char*) malloc(5000*sizeof(char));
       
@@ -412,12 +451,10 @@ void main(int argc,char **argv) {
       error(ret,newsockfd,cl_addr,len);
     }
    }
-    ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
-    error(ret,newsockfd,cl_addr,len); 
-    printf("Sent data to %s: %s\n", clientAddr, buffer);
+     printf("Sent data to %s: %s\n", clientAddr, buffer);
    }
   }
-  close(newsockfd);
+  else close(newsockfd);
  }
 }
 	
