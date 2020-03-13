@@ -1,5 +1,6 @@
 #include"stdio.h"
 #include"stdlib.h"
+#include <ctype.h>
 #include"sys/types.h"
 #include"sys/socket.h"
 #include"string.h"
@@ -42,14 +43,14 @@ void error(int ret, int newsockfd, struct sockaddr_in cl_addr, int len)
   }
 }
 
-void close_socket_exit(int newsockfd, struct sockaddr_in cl_addr, int len)
+void close_socket_exit(int newsockfd, struct sockaddr_in cl_addr, int len, char* client_id)
 {
   shutdown(newsockfd,SHUT_RD);
   int ret;
   ret = sendto(newsockfd, "Shutting down.\n", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
   shutdown(newsockfd,SHUT_WR);
   close(newsockfd);
-  printf("Closed gracefully\n");
+  printf("Client %s Closed gracefully\n", client_id);
 }
 
 int check_username_password(char *usr,char *pass){
@@ -151,6 +152,49 @@ char *handle_admin(char *customer,char *transaction){
   char *ans=malloc(sizeof(char)*10000);
   tr_type=strtok(transaction," ");
   amt=strtok(NULL," ");
+
+  if(amt==NULL)
+  {
+    sprintf(ans, "Query Invalid, too few arguments\n");
+    return ans;
+  }
+
+  char* extravalues=strtok(NULL,"\n");
+  //printf("%s extra\n",extravalues);
+
+  if(extravalues!=NULL)
+  {
+    sprintf(ans, "Query Invalid, too many arguments\n");
+    return ans;
+  }
+
+  int length = strlen (amt) -1;
+  int count_dot=0;
+  for (int i=0;i<length; i++){
+       if (amt[i]=='.')
+       {
+           count_dot++;
+       }
+  }
+  //printf("%d\n",count_dot);
+  //printf("%s\n",amt);
+  //printf("%s\n",amt);
+  if(count_dot>1)
+  {
+    sprintf(ans, "Query Invalid, enter valid amount\n");
+    return ans;
+  }
+
+  for (int i=0;i<length; i++){
+     if (!(amt[i]=='.'))
+      {
+         if(!isdigit(amt[i])){
+           sprintf(ans, "Query Invalid, enter valid amount\n");
+          return ans;
+         }
+      }
+  }
+  
   strncpy(amt,amt,strlen(amt)-1);
   double cur_bal = atof(get_customer_balance(customer));
   double new_bal = cur_bal;
@@ -287,7 +331,7 @@ void main(int argc,char **argv) {
     error(ret,newsockfd,cl_addr,len);
     if(strncmp(buffer,"Exit",4)==0)
       {
-        close_socket_exit(newsockfd, cl_addr, len);
+        close_socket_exit(newsockfd, cl_addr, len, clientAddr);
         exit(1);
       }
     char *buf,*usr,*pass;
@@ -298,7 +342,7 @@ void main(int argc,char **argv) {
     ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
     if(strncmp(buffer,"Exit",4)==0)
       {
-        close_socket_exit(newsockfd, cl_addr, len);
+        close_socket_exit(newsockfd, cl_addr, len, clientAddr);
         exit(1);
       }
     error(ret,newsockfd,cl_addr,len);
@@ -312,7 +356,7 @@ void main(int argc,char **argv) {
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
      error(ret,newsockfd,cl_addr,len);
      ret = sendto(newsockfd, "Exit", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
-     close_socket_exit(newsockfd, cl_addr, len);
+     close_socket_exit(newsockfd, cl_addr, len, clientAddr);
     exit(1);
     }
     //Customer
@@ -325,7 +369,7 @@ void main(int argc,char **argv) {
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
       if(strncmp(buffer,"Exit",4)==0)
       {
-        close_socket_exit(newsockfd, cl_addr, len);
+        close_socket_exit(newsockfd, cl_addr, len, clientAddr);
         exit(1);
       }
       error(ret,newsockfd,cl_addr,len);
@@ -363,20 +407,21 @@ void main(int argc,char **argv) {
     //Admin
     else if (usr_found=='A') {
       while(1){
-        memset(buffer,0,BUF_SIZE);
+        //memset(buffer,0,BUF_SIZE);
+        //memset(buf,0,BUF_SIZE);
         buf = "A Welcome Admin!\nEnter 'Username' of  the Customer to perform transactions\n";
         ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
         error(ret,newsockfd,cl_addr,len);
         ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
         if(strncmp(buffer,"Exit",4)==0)
       {
-        close_socket_exit(newsockfd, cl_addr, len);
+        close_socket_exit(newsockfd, cl_addr, len, clientAddr);
         exit(1);
       }
         error(ret,newsockfd,cl_addr,len);
         if(strncmp(buffer,"Exit",4)==0)
           {
-            close_socket_exit(newsockfd, cl_addr, len);
+            close_socket_exit(newsockfd, cl_addr, len, clientAddr);
             exit(1);
           }
         char *customer;
@@ -391,7 +436,7 @@ void main(int argc,char **argv) {
           ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
           if(strncmp(buffer,"Exit",4)==0)
           {
-            close_socket_exit(newsockfd, cl_addr, len);
+            close_socket_exit(newsockfd, cl_addr, len, clientAddr);
             exit(1);
           }
           error(ret,newsockfd,cl_addr,len);
@@ -418,7 +463,7 @@ void main(int argc,char **argv) {
       ret = recvfrom(newsockfd, buffer, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, &len);
       if(strncmp(buffer,"Exit",4)==0)
       {
-        close_socket_exit(newsockfd, cl_addr, len);
+        close_socket_exit(newsockfd, cl_addr, len, clientAddr);
         exit(1);
       }
       error(ret,newsockfd,cl_addr,len);
@@ -438,10 +483,20 @@ void main(int argc,char **argv) {
         char* username = malloc(15);
         strcpy(username,token);
         username[strlen(token)-1]='\0';
-        //printf("%s\n",username);
-        strcat(response,get_mini_stat(username));
-        free(username);
-        //printf("received: %s\n", response);
+        if(check_user_login(username)==0)
+        {
+          //printf("%s\n",username);
+          strcat(response,get_mini_stat(username));
+          free(username);
+          //printf("received: %s\n", response);
+        }
+        else
+        {
+          response = "Wrong Username. Make Sure the Customer entry is there in login File and the corresponding transaction history file exists\n";
+          //ret = sendto(newsockfd, res, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);
+         // error(ret,newsockfd,cl_addr,len);
+        }
+        
       }
       else
       {

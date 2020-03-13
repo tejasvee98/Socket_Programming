@@ -93,6 +93,7 @@ int port;
   error(ret,"sending data",sockfd);
 }
 while(1){
+  memset(buffer,0,BUF_SIZE);
   ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
   if(strncmp(buffer,"Exit",4)==0)
         {
@@ -100,7 +101,7 @@ while(1){
           break;
         }
   if (ret < 0) {  
-   printf("3Error receiving data!\n");    
+   printf("Error receiving data!\n");    
   } 
 	else {
     char *type,*token;
@@ -143,7 +144,7 @@ while(1){
       if (fgets(buffer, BUF_SIZE, stdin) != NULL){
         if(strncmp(buffer,"Exit",4)==0)
         {
-          printf("Hi\n");
+         // printf("Hi\n");
           close_socket_exit(sockfd,addr);
           break;
         }
@@ -158,14 +159,17 @@ while(1){
           close_socket_exit(sockfd,addr);
           break;
         }  
+        
   		if (ret < 0) {  
-   			printf("3Error receiving data!\n");    
+   			printf("Error receiving data!\n");    
   		}
 			else{
 				fputs(buffer,stdout);
 				printf("\n");
 			}
 		 
+     if(strcmp(buffer,"Wrong Username. Make Sure the Customer entry is there in login File and the corresponding transaction history file exists\n")==0) continue;
+
 		 if (fgets(buffer, BUF_SIZE, stdin) != NULL) {
        if(strncmp(buffer,"Exit",4)==0)
         {
@@ -184,7 +188,7 @@ while(1){
           break;
         } 
   		if (ret < 0) {  
-   			printf("3Error receiving data!\n");    
+   			printf("Error receiving data!\n");    
   		}
 			else{
 				fputs(buffer,stdout);
@@ -211,7 +215,7 @@ while(1){
           break;
         } 
       if (ret < 0) {  
-        printf("3Error receiving data!\n");    
+        printf("Error receiving data!\n");    
       }
       else{
         fputs(buffer,stdout);
