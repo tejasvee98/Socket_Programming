@@ -321,9 +321,6 @@ void main(int argc,char **argv) {
   if ((childpid = fork()) == 0) { //creating a child process
 
    close(sockfd); 
-//stop listening for new connections by the main process. 
-//the child will continue to listen. 
-//the main process now handles the connected client.
 
    while(1) {
     memset(buffer, 0, BUF_SIZE);
@@ -351,13 +348,12 @@ void main(int argc,char **argv) {
     int usr_found=check_username_password(usr,pass);
     if (usr_found==0) 
     {
-      memset(buf, 0, BUF_SIZE);
-      buf="<dummy> Username or Password incorrect";
+      buf="Username or Password incorrect\n";
       ret = sendto(newsockfd, buf, BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
      error(ret,newsockfd,cl_addr,len);
-     ret = sendto(newsockfd, "Exit", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
+     //ret = sendto(newsockfd, "Exit", BUF_SIZE, 0, (struct sockaddr *) &cl_addr, len);   
      close_socket_exit(newsockfd, cl_addr, len, clientAddr);
-    exit(1);
+     exit(1);
     }
     //Customer
     else if (usr_found=='C') {

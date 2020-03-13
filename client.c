@@ -95,8 +95,9 @@ int port;
 while(1){
   memset(buffer,0,BUF_SIZE);
   ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL);  
-  if(strncmp(buffer,"Exit",4)==0)
+  if(strcmp(buffer,"Username or Password incorrect\n")==0)
         {
+          fputs(buffer,stdout);
           close_socket_exit(sockfd,addr);
           break;
         }
